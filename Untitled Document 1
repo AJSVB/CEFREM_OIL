@@ -1,0 +1,9 @@
+print(np.array(list(l13.values())))
+leftmax13 = np.array(list(l13.values()))[:,0]
+uppermin13 = np.array(list(l13.values()))[:,1]
+print(leftmax13)
+print(uppermin13)
+print(np.max(leftmax13))
+print(np.min(uppermin13))
+leftmaxv13=np.max(leftmax13)
+upperminv13=np.min(uppermin13)
