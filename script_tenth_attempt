@@ -2,7 +2,7 @@ from torch.utils.data import Dataset, DataLoader, sampler
 from pathlib import Path
 from PIL import Image
 import matplotlib.pyplot as plt
-hyper = 3
+hyper = 2
 class CloudDataset(Dataset):
     def __init__(self, _dir, gt_dir, pytorch=True):
         super().__init__()
@@ -64,7 +64,7 @@ class CloudDataset(Dataset):
 
 base_path = Path("./Documents")
 #data = CloudDataset(base_path/'secondattemptX', base_path/'secondattemptY')
-data = CloudDataset(base_path/'6X', base_path/'6Y')
+data = CloudDataset(base_path/'7X', base_path/'7Y')
 import torch 
 import numpy as np
 import cv2
@@ -87,12 +87,12 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1,go='tr
 
     best_acc = 0.0
     def model1(x):
-        x = x[:,torch.randperm(10)]
+     #   x = x[:,torch.randperm(10)]
         a = random.random()
         if a < .25:
-            f = lambda b : torch.flip(b,[2,3])
+            f = lambda b : torch.flip(b,[2,1])
         elif a < .5:
-            f = lambda b : torch.flip(b,[3])
+            f = lambda b : torch.flip(b,[1])
         elif a < .75:
             f = lambda b : torch.flip(b,[2])
         else:
@@ -132,7 +132,8 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1,go='tr
                     t0 = t2==False and t1 == False
                    # print(t1)
                    # print(t2)
-                    z[e] = t1 + t2*2 - (t1 and t2)*2
+                    z[e] = t1 + t2*2 - (t1 and t2)*2 -1
+#                    z[e] = max(z[e],0)
                     #print(z[e])
                   #  z[e] = torch.LongTensor([t0*1.,t1*1.,t2*1.])
                # print(z)
@@ -148,7 +149,8 @@ def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1,go='tr
                         optimizer.zero_grad()
                     
                         outputs = model1(x)
-                    
+                 #       print(outputs)
+                 #       print(y)
                         loss = loss_fn(outputs, y)
 
                     # the backward pass frees the graph memory, so there is no 
@@ -399,7 +401,8 @@ class DiceLoss(nn.Module):
 lr = 1e-4
 #92, 238, 334,11
 #295, 86, 224
-weight = torch.tensor([1., 295./86,295./224])#, 334/11])
+#weight = torch.tensor([1., 295./86,295./224])#, 334/11])
+weight = torch.tensor([2.3, 1])#, 334/11])
 loss_fn = nn.CrossEntropyLoss(weight=weight)
 #loss_fn = IoULoss()
 #loss_fn = FocalTverskyLoss()
@@ -419,47 +422,14 @@ class supa(nn.Module):
         self.preprocessing = .7 # random.random()
         print(self.drp1)
         print(self.drp2)
-        print(self.preprocessing)
-        if self.preprocessing>2./3:
-            self.d = 10 # random.random()/2
-            print(self.d)
-        self.otherpre = nn.Conv2d(10, 3, kernel_size=(7, 7), stride=(1, 1), padding=(3, 3))#, bias=False)
-        self.pre = nn.Conv2d(1, self.c, kernel_size=(7, 7), stride=(1, 1), padding=(3, 3))#, bias=False)
-        self.pre2 =         nn.ReLU()
-        self.pre3 = nn.Dropout(self.drp1)
         self.post = nn.Linear(1000,hyper)
         self.post1 = nn.Dropout(self.drp2)
-       # self.preLaurent0 = nn.MaxPool3d((10,1,1))
-       # self.preLaurent1 = nn.AvgPool3d((10,1,1))
-        #self.preLaurent0 = torch.var()#nn.LPPool2d(1/self.d,(10,1))
-        self.preLaurent1 = nn.LPPool2d(self.d,(10,1))
-        self.preLaurent2 = nn.LPPool2d(1,(10,1))
-        self.norm = nn.BatchNorm2d(10)
     def forward(self, input):
+     #   print(input.shape)
         a = input.shape[0]
         b = input.shape[1]
-        if self.preprocessing <1./3:
-    
-            x = self.pre(input.view(a*b,1,256,256)).view(a,self.c,b,256,256)
-            x = torch.sum(x,axis = 2)
-       
+        x = torch.cat((input.view(a,1,256,256),input.view(a,1,256,256),input.view(a,1,256,256)),axis=1)
 
-        elif self.preprocessing <2./3:
-            x = self.otherpre(input)
-
-
-        else:
-            """
-            input = 256 - input
-            b1 =  b1 = torch.var(input.view(a,10,256,256),axis=1).view(a,1,256,256)
- #self.preLaurent0(input.view(a,10,256*256)).view(a,1,256,256)
-            b2 =  self.preLaurent1(self.norm(input).view(a,10,256*256)).view(a,1,256,256)
-            b3 =  self.preLaurent2(input.view(a,10,256*256)).view(a,1,256,256)
-            x = torch.cat((b1,b2,b3),axis=1)
-            """
-            x = torch.cat((input[:,0:1,:,:]+input[:,1:2,:,:]+input[:,2:3,:,:],
-input[:,3:4,:,:]+input[:,4:5,:,:]+input[:,5:6,:,:],
- input[:,6:7,:,:]+input[:,7:8,:,:]+input[:,8:9,:,:]+input[:,9:,:,:]),axis=1)
         if random.random()>1.99:
             temp = x
             for i in range(len(x)):
@@ -527,7 +497,7 @@ train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,a
 #train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 5)#,go = 'valid')
 #train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 5)#,go = 'valid')
 model.eval()
-data = CloudDataset(base_path/'6Xtest', base_path/'6Ytest')
+data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
 train_dl = DataLoader(data, batch_size=16, shuffle=True)
 train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
 #torch.save(model, "modelUNET6A17")
@@ -540,13 +510,13 @@ def doing(string):
     print()
     print(string)
     print(os.system("ls"))
-    os.system("cp 6X/"+string+"* 6Xtest/")
-    os.system("cp 6Y/"+string+"* 6Ytest/")
-    os.system("rm 6X/"+string+"*")
-    os.system("rm 6Y/"+string+"*")
+    os.system("cp 7X/"+string+"* 7Xtest/")
+    os.system("cp 7Y/"+string+"* 7Ytest/")
+    os.system("rm 7X/"+string+"*")
+    os.system("rm 7Y/"+string+"*")
     base_path = Path("")
     #data = CloudDataset(base_path/'secondattemptX', base_path/'secondattemptY')
-    data = CloudDataset(base_path/'6X', base_path/'6Y')
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
     import torch 
     import numpy as np
     import cv2
@@ -559,9 +529,9 @@ def doing(string):
     valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
     try:
         print("one")
-        model = torch.load("modelUNET6A19")
-        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False)
-        opt.load_state_dict(torch.load("optUNET6A19"))
+        model = torch.load("modelUNET6A23")
+        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False, weight_decay =  0.12457348241590291)
+        opt.load_state_dict(torch.load("optUNET6A23"))
     except :
         print("two")
         import segmentation_models_pytorch as smp
@@ -579,36 +549,359 @@ def doing(string):
         model = supa(torchvision.models.resnet18(pretrained=True, progress=True, num_classes=1000))
         #model = supa(torchvision.models.densenet121(pretrained=False, progress=True, num_classes=4))
         #model = ResNetUNet(2)
-        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False)
+        wd = 10**(-5*(random.random()))
+        wd = 0.0007687495800262013
+        wd = 0.12457348241590291
+        print(wd)
+        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False, weight_decay =  0.12457348241590291)
 
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
     model.train()
-    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
-    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
-    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
-    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
     model.eval()
-    data = CloudDataset(base_path/'6Xtest', base_path/'6Ytest')
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
     train_dl = DataLoader(data, batch_size=16, shuffle=True)
     train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
-    os.system("cp 6Xtest/"+string+"* 6X/")
-    os.system("cp 6Ytest/"+string+"* 6Y/")
-    os.system("rm 6Xtest/*")
-    os.system("rm 6Ytest/*")
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+
+    data = CloudDataset(base_path/'7X', base_path/'7Y')
+    import torch 
+    import numpy as np
+    import cv2
+    len(data)
+    ratio = .75
+    train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
+    model.train()
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)#,go = 'valid')
+    model.eval()
+    data = CloudDataset(base_path/'7Xtest', base_path/'7Ytest')
+    train_dl = DataLoader(data, batch_size=16, shuffle=True)
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, go = 'valid' , epochs = 1)
+    os.system("cp 7Xtest/"+string+"* 7X/")
+    os.system("cp 7Ytest/"+string+"* 7Y/")
+    os.system("rm 7Xtest/*")
+    os.system("rm 7Ytest/*")
     os.system("cd ..")
-    torch.save(model, "modelUNET6A19")
-    torch.save(opt.state_dict(), "optUNET6A19")
+    torch.save(model, "modelUNET6A22")
+    torch.save(opt.state_dict(), "optUNET6A22")
 print("starts")
 #doing("first")
 #doing("second")
 #doing("third")
-#doing("forth")
-doing("fifth")
+#doing("forth") #good #0.0007687495800262013
+doing("fifth") #usuall
 #doing("sixth")
 #doing("seventh")
 #doing("eighth")
 #doing("nineth")
 #doing("tenth")
-#doing("eleventh") #pas ouf non plus
-#doing("twelveth")#1.32,.56
+#doing("eleventh") #good, 0.12457348241590291
+#doing("twelveth")
 #doing("thirteenth")
-

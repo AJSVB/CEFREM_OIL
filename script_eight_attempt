@@ -457,9 +457,9 @@ class supa(nn.Module):
             b3 =  self.preLaurent2(input.view(a,10,256*256)).view(a,1,256,256)
             x = torch.cat((b1,b2,b3),axis=1)
             """
-            x = torch.cat((input[:,0:1,:,:]+input[:,1:2,:,:]+input[:,2:3,:,:],
-input[:,3:4,:,:]+input[:,4:5,:,:]+input[:,5:6,:,:],
- input[:,6:7,:,:]+input[:,7:8,:,:]+input[:,8:9,:,:]+input[:,9:,:,:]),axis=1)
+            x = torch.cat(((input[:,0:1,:,:]+input[:,1:2,:,:]+input[:,2:3,:,:])/3,
+(input[:,3:4,:,:]+input[:,4:5,:,:]+input[:,5:6,:,:])/3,
+ (input[:,6:7,:,:]+input[:,7:8,:,:]+input[:,8:9,:,:]+input[:,9:,:,:])/4),axis=1)
         if random.random()>1.99:
             temp = x
             for i in range(len(x)):
@@ -559,9 +559,9 @@ def doing(string):
     valid_dl = [] #DataLoader(valid_ds, batch_size=4, shuffle=True)
     try:
         print("one")
-        model = torch.load("modelUNET6A19")
-        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False)
-        opt.load_state_dict(torch.load("optUNET6A19"))
+        model = torch.load("modelUNET6A20")
+        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False, weight_decay =  0.12457348241590291)
+        opt.load_state_dict(torch.load("optUNET6A20"))
     except :
         print("two")
         import segmentation_models_pytorch as smp
@@ -579,13 +579,20 @@ def doing(string):
         model = supa(torchvision.models.resnet18(pretrained=True, progress=True, num_classes=1000))
         #model = supa(torchvision.models.densenet121(pretrained=False, progress=True, num_classes=4))
         #model = ResNetUNet(2)
-        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False)
+        wd = 10**(-5*(random.random()))
+        wd = 0.0007687495800262013
+        wd = 0.12457348241590291
+        print(wd)
+        opt = AdaBelief(model.parameters(), lr = lr,print_change_log = False, weight_decay =  0.12457348241590291)
 
     model.train()
     train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
     train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
     train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
     train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
+    train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 4)#,go = 'valid')
+
     model.eval()
     data = CloudDataset(base_path/'6Xtest', base_path/'6Ytest')
     train_dl = DataLoader(data, batch_size=16, shuffle=True)
@@ -595,20 +602,19 @@ def doing(string):
     os.system("rm 6Xtest/*")
     os.system("rm 6Ytest/*")
     os.system("cd ..")
-    torch.save(model, "modelUNET6A19")
-    torch.save(opt.state_dict(), "optUNET6A19")
+    torch.save(model, "modelUNET6A20")
+    torch.save(opt.state_dict(), "optUNET6A20")
 print("starts")
 #doing("first")
 #doing("second")
 #doing("third")
-#doing("forth")
-doing("fifth")
+#doing("forth") #good #0.0007687495800262013
+#doing("fifth") #usuall
 #doing("sixth")
 #doing("seventh")
 #doing("eighth")
 #doing("nineth")
 #doing("tenth")
-#doing("eleventh") #pas ouf non plus
-#doing("twelveth")#1.32,.56
+doing("eleventh") #good, 0.12457348241590291
+#doing("twelveth")
 #doing("thirteenth")
-

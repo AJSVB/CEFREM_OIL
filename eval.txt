@@ -1,0 +1,336 @@
+from torch.utils.data import Dataset, DataLoader, sampler
+from pathlib import Path
+from PIL import Image
+import matplotlib.pyplot as plt
+
+class CloudDataset(Dataset):
+    def __init__(self, _dir, gt_dir, pytorch=True):
+        super().__init__()
+        
+        # Loop through the files in red folder and combine, into a dictionary, the other bands
+        self.files = [self.combine_files(f, gt_dir) for f in _dir.iterdir() if not f.is_dir()]
+        self.pytorch = pytorch
+        #self.correction = 0
+    def combine_files(self, r_file: Path,  gt_dir):
+        
+        files = {'red': r_file, 
+                 'gt': gt_dir/r_file.name.replace('red', 'gt')}
+
+        return files
+                                       
+    def __len__(self):
+        
+        return len(self.files) 
+    
+     
+    def open_as_array(self, idx, invert=False, include_nir=False):
+        
+      #  raw_rgb = np.stack([np.array(Image.open(self.files[idx]['red'])),
+      #                     ], axis=2)
+        f = open(self.files[idx]['red'], 'rb')
+        temp = np.load(f)
+        #print(np.max(temp))
+        #print(np.min(temp))
+        return temp
+    
+    def open_mask(self, idx, add_dims=False):
+        f = open(self.files[idx]['gt'], 'rb')
+        temp = np.load(f)
+        if (np.max(temp) != 0) :
+            print(np.max(temp))
+#	if temp.shape != (256,256):
+#            temp = (np.zeros((256,256))[] = temp)
+        return temp/256
+    
+    def __getitem__(self, idx):
+        temp = self.open_as_array(idx, invert=self.pytorch, include_nir=True)
+        x = torch.tensor(temp, dtype=torch.float32)
+
+        temp = self.open_mask(idx, add_dims=False)
+        y = torch.tensor(temp, dtype=torch.torch.int64)
+        return x, y
+    
+    def open_as_pil(self, idx):
+        
+        arr = 256*self.open_as_array(idx)
+        
+        return Image.fromarray(arr.astype(np.uint8))
+    
+    def __repr__(self):
+        s = 'Dataset class with {} files'.format(self.__len__())
+
+        return s
+
+
+base_path = Path("./Documents")
+data = CloudDataset(base_path/'secondattemptX', base_path/'secondattemptY')
+data = CloudDataset(base_path/'reduce2X', base_path/'reduce2Y')
+import torch 
+import numpy as np
+import cv2
+len(data)
+ratio = .75
+train_ds, valid_ds = torch.utils.data.random_split(data, (int(len(data)*ratio), len(data) - (int(len(data)*ratio))))
+
+
+train_dl = DataLoader(train_ds, batch_size=16*4, shuffle=False)
+valid_dl = DataLoader(valid_ds, batch_size=16*4, shuffle=False)
+
+
+import time
+def train(model, train_dl, valid_dl, loss_fn, optimizer, acc_fn, epochs=1):
+    start = time.time()
+    model#.cuda()
+
+    train_loss, valid_loss = [], []
+
+    best_acc = 0.0
+
+    for epoch in range(epochs):
+        print('Epoch {}/{}'.format(epoch, epochs - 1))
+        print('-' * 10)
+
+        for phase in ['valid']:  
+            if phase == 'train':
+                model.train(True)  # Set trainind mode = true
+                dataloader = train_dl
+            else:
+                model.train(False)  # Set model to evaluate mode
+                dataloader = valid_dl
+
+            running_loss = 0.0
+            running_acc = 0.0
+
+            step = 0
+            #timer=time.time()
+            # iterate over data
+            for x, y in dataloader:
+               # x = x.cuda()
+               # y = y.cuda()
+                step += 1
+                
+                # forward pass
+                if phase == 'train':
+                    loss = 1
+                    if 1==1:
+                    #while(loss>.05):
+           #
+                    # zero the gradients
+                        optimizer.zero_grad()
+                    
+                        outputs = model(x)
+                    
+                        loss = loss_fn(outputs, y)
+
+                    # the backward pass frees the graph memory, so there is no 
+                    # need for torch.no_grad in this training pass
+                        loss.backward()
+                        optimizer.step()
+                    # scheduler.step()
+                        print(loss)
+                    
+                else:
+                    with torch.no_grad():
+                        outputs = model(x)
+                        loss = loss_fn(outputs, y.long())
+                        
+                        if loss>.1:
+                            for i in range(len(x)):
+                                if(np.sum(np.array(y[i])>0)>0):
+                                    print(x.shape)
+                                    fig, axs = plt.subplots(4,3)
+                                    axs[0,0].imshow(x[i,0,:,:])
+                                    axs[0,1].imshow(x[i,1,:,:])
+                                    axs[0,2].imshow(x[i,2,:,:])
+                                    axs[1,0].imshow(x[i,3,:,:])
+                                    axs[1,1].imshow(x[i][4])
+                                    axs[1,2].imshow(x[i][5])
+                                    axs[2,0].imshow(x[i][6])
+                                    axs[2,1].imshow(x[i][7])
+                                    axs[2,2].imshow(x[i][8])
+                                    axs[3,0].imshow(x[i][9])
+                                    axs[3,1].imshow(x[i][10])
+                                    axs[3,2].imshow(x[i][11])
+                              #  axs[12].imshow(x[i][12])
+                                #plt.colorbar()
+                                    fig2=plt.figure(2)
+                                    plt.imshow(outputs[i][1])
+                                    fig3=plt.figure(3)
+                                    plt.imshow(y[i])
+                                    fig4=plt.figure(4)
+                                    plt.imshow(outputs[i][0])
+                                    plt.show()
+                            
+                # stats - whatever is the phase
+                acc = acc_fn(outputs, y)
+
+                running_acc  += acc*dataloader.batch_size
+                running_loss += loss*dataloader.batch_size 
+
+                if step % 10 == 0:
+                    # clear_output(wait=True)
+                    print('Current step: {}  Loss: {}  Acc: {}  AllocMem (Mb): {}'.format(step, loss, acc, torch.cuda.memory_allocated()/1024/1024))
+                    # print(torch.cuda.memory_summary())
+                
+            epoch_loss = running_loss / len(dataloader.dataset)
+            epoch_acc = running_acc / len(dataloader.dataset)
+
+            print('{} Loss: {:.4f} Acc: {}'.format(phase, epoch_loss, epoch_acc))
+
+            train_loss.append(epoch_loss) if phase=='train' else valid_loss.append(epoch_loss)
+
+    time_elapsed = time.time() - start
+    print('Training complete in {:.0f}m {:.0f}s'.format(time_elapsed // 60, time_elapsed % 60))    
+    
+    return train_loss, valid_loss, model, opt    
+
+def acc_metric(predb, yb):
+   # return (predb.argmax(dim=1) == yb.cuda()).float().mean()
+
+    return (predb.argmax(dim=1) == yb).float().mean()
+
+
+#https://github.com/usuyama/pytorch-unet
+import torch
+import torch.nn as nn
+from torchvision import models
+
+def convrelu(in_channels, out_channels, kernel, padding):
+    return nn.Sequential(
+        nn.Conv2d(in_channels, out_channels, kernel, padding=padding),
+        nn.ReLU(inplace=True),
+    )
+
+
+class ResNetUNet(nn.Module):
+    def __init__(self, n_class):
+        super().__init__()
+
+        self.base_model = models.resnet18(pretrained=False)
+        self.base_layers = list(self.base_model.children())
+        print(*self.base_layers[:3])
+        self.layer0 = nn.Sequential(
+nn.Conv2d(13, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False),
+            nn.BatchNorm2d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True), 
+            nn.ReLU(inplace=True)) # size=(N, 64, x.H/2, x.W/2)
+        self.layer0_1x1 = convrelu(64, 64, 1, 0)
+        self.layer1 = nn.Sequential(*self.base_layers[3:5]) # size=(N, 64, x.H/4, x.W/4)
+        self.layer1_1x1 = convrelu(64, 64, 1, 0)
+        self.layer2 = self.base_layers[5]  # size=(N, 128, x.H/8, x.W/8)
+        self.layer2_1x1 = convrelu(128, 128, 1, 0)
+        self.layer3 = self.base_layers[6]  # size=(N, 256, x.H/16, x.W/16)
+        self.layer3_1x1 = convrelu(256, 256, 1, 0)
+        self.layer4 = self.base_layers[7]  # size=(N, 512, x.H/32, x.W/32)
+        self.layer4_1x1 = convrelu(512, 512, 1, 0)
+
+        self.upsample = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+
+        self.conv_up3 = convrelu(256 + 512, 512, 3, 1)
+        self.conv_up2 = convrelu(128 + 512, 256, 3, 1)
+        self.conv_up1 = convrelu(64 + 256, 256, 3, 1)
+        self.conv_up0 = convrelu(64 + 256, 128, 3, 1)
+
+        self.conv_original_size0 = convrelu(13, 64, 3, 1)
+        self.conv_original_size1 = convrelu(64, 64, 3, 1)
+        self.conv_original_size2 = convrelu(64 + 128, 64, 3, 1)
+
+        self.conv_last = nn.Conv2d(64, n_class, 1)
+
+    def forward(self, input):
+        x_original = self.conv_original_size0(input)
+        x_original = self.conv_original_size1(x_original)
+
+        layer0 = self.layer0(input)
+        layer1 = self.layer1(layer0)
+        layer2 = self.layer2(layer1)
+        layer3 = self.layer3(layer2)
+        layer4 = self.layer4(layer3)
+
+        layer4 = self.layer4_1x1(layer4)
+        x = self.upsample(layer4)
+        layer3 = self.layer3_1x1(layer3)
+        x = torch.cat([x, layer3], dim=1)
+        x = self.conv_up3(x)
+
+        x = self.upsample(x)
+        layer2 = self.layer2_1x1(layer2)
+        x = torch.cat([x, layer2], dim=1)
+        x = self.conv_up2(x)
+
+        x = self.upsample(x)
+        layer1 = self.layer1_1x1(layer1)
+        x = torch.cat([x, layer1], dim=1)
+        x = self.conv_up1(x)
+
+        x = self.upsample(x)
+        layer0 = self.layer0_1x1(layer0)
+        x = torch.cat([x, layer0], dim=1)
+        x = self.conv_up0(x)
+
+        x = self.upsample(x)
+        x = torch.cat([x, x_original], dim=1)
+        x = self.conv_original_size2(x)
+
+        out = self.conv_last(x)
+
+        return out
+torch.set_num_threads(8)
+from adabelief_pytorch import AdaBelief
+
+
+
+import numpy
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+
+
+
+
+#PyTorch
+ALPHA = 0.5
+BETA = 0.5
+GAMMA = 1
+
+class FocalTverskyLoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(FocalTverskyLoss, self).__init__()
+
+    def forward(self, inputs, targets, smooth=1, alpha=ALPHA, beta=BETA, gamma=GAMMA):
+        
+        #comment out if your model contains a sigmoid or equivalent activation layer
+        inputs = F.sigmoid(inputs)       
+        
+        #flatten label and prediction tensors
+        inputs = inputs.view(-1)
+        targets = targets.view(-1)
+        
+        #True Positives, False Positives & False Negatives
+        TP = (inputs * targets).sum()    
+        FP = ((1-targets) * inputs).sum()
+        FN = (targets * (1-inputs)).sum()
+        
+        Tversky = (TP + smooth) / (TP + alpha*FP + beta*FN + smooth)  
+        FocalTversky = (1 - Tversky)**gamma
+                       
+        return FocalTversky
+
+
+lr = .01
+
+weight = torch.tensor([1., 100.])
+loss_fn = nn.CrossEntropyLoss(weight=weight)
+#loss_fn = IoULoss()
+try:
+	model = torch.load("modelUNET2A3")
+	opt = AdaBelief(model.parameters(), lr = lr)
+	opt.load_state_dict(torch.load("modelUNET2A3"))
+except :
+	model = ResNetUNet(2)
+	opt = AdaBelief(model.parameters(), lr = lr)
+
+#model.train()
+train_loss, valid_loss, model, opt = train(model,train_dl,valid_dl,loss_fn,opt,acc_metric, epochs = 1)
+#torch.save(model, "modelUNET2A")
+#torch.save(opt.state_dict(), "optUNET2A")
+
