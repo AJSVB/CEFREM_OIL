@@ -436,8 +436,42 @@ def wow(l1,l2,upperminv,leftmaxv,x,y):
         l2[k] =  [int(measure(v[0],upperminv,leftmaxv,upperminv)/y),int(measure(leftmaxv,v[1],leftmaxv,upperminv)/x)]
         
 
-    
+wow(l1,l2,upperminv1,leftmaxv1,27.06052348, 11.49417818)
+print()
+wow(l3,l4,upperminv3,leftmaxv3,26.92563584, 11.7892986)
+print("Lui")
+wow(l5,l6,upperminv5,leftmaxv5,27.19040644, 11.18661894)
+print()
+wow(l7,l8,upperminv7,leftmaxv7,27.24637143-7, 11.40972705+1)
+21.535343308
+39.918591556
+print()
 
+wow(l9,l10,upperminv9,leftmaxv9,27.29277991-7, 11.3347548+3.5)
+print()
+
+wow(l11,l12,upperminv11,leftmaxv11,26.97047807, 11.28243305)
+print()
+
+wow(l13,l14,upperminv13,leftmaxv13,27.1187434-7,  11.86561356+3)
+print()
+wow(l15,l16,upperminv15,leftmaxv15,27.29791944-7, 11.79595231+3)
+print("Lui")
+wow(l17,l18,upperminv17,leftmaxv17,27.45173665-7, 11.19293078+3)
+print()
+wow(l19,l20,upperminv19,leftmaxv19,26.77823651 ,11.39256797)
+21.535343308
+39.918591556
+print()
+
+wow(l21,l22,upperminv21,leftmaxv21,26.75344831 ,11.30063966)
+print()
+
+wow(l23,l24,upperminv23,leftmaxv23,26.6025474  ,11.25265844)
+print()
+
+wow(l25,l26,upperminv25,leftmaxv25,26.74274096 ,11.77327846) 
+"""
 wow(l1,l2,upperminv1,leftmaxv1,27.06052348, 11.49417818)
 print()
 wow(l3,l4,upperminv3,leftmaxv3,26.92563584, 11.7892986)
@@ -473,7 +507,7 @@ wow(l23,l24,upperminv23,leftmaxv23,26.6025474  ,11.25265844)
 print()
 
 wow(l25,l26,upperminv25,leftmaxv25,26.74274096 ,11.77327846)
-
+"""
 []
 []
 []
@@ -564,16 +598,16 @@ def saver(input_array,output_array,string, ext = False):
                 import matplotlib
                 #print(temp)
                 #print(tempan)
-                tempan = np.amax((tempan),axis=0)
+                tempan1 = np.amax((tempan),axis=0)
                 #print(tempan)
                 #break
                 #print(tempan)
               #  print(input_image[i].shape)
                # print(b[-1])
-                a='6X/'+str(string)+str(x)+str(y)+'.jpg'
-                b='6Y/'+str(string)+str(x)+str(y)+'.jpg'
+                a='8X/'+str(string)+str(x)+str(y)+'.jpg'
+                b='8Y/'+str(string)+str(x)+str(y)+'.jpg'
                 c=temp
-                d=tempan
+                d=tempan1
 
                 #plt.imshow(tempan)
                 #plt.colorbar()
@@ -592,6 +626,24 @@ def saver(input_array,output_array,string, ext = False):
              #   annotation_array.append(tempan)
 
               #  print(temp.shape)
+                for i in range(10):
+                    a='7X/'+str(string)+str(x)+str(y)+str(i)+'.jpg'
+                    b='7Y/'+str(string)+str(x)+str(y)+str(i)+'.jpg'
+                    c=temp[i]
+                    d=tempan[i]
+
+                #plt.imshow(tempan)
+                #plt.colorbar()
+
+               # plt.show()
+                #np.to_csv(a,c)
+                #np.to_csv(b,d)
+                #c.tofile(a,sep=',')
+                #d.tofile(b,sep=',')
+                    with open(a, 'wb') as f:
+                        np.save(f, c )
+                    with open(b, 'wb') as f:
+                        np.save(f, d )                   
 
 input_array1=[]
 output_array1 = []
